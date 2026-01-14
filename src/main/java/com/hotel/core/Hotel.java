@@ -11,6 +11,7 @@ import com.hotel.domain.ReserverPayer;
 import com.hotel.domain.Room;
 import com.hotel.domain.RoomType;
 import com.hotel.exception.HotelException;
+import com.hotel.domain.RoomState;
 
 public class Hotel {
     private final String name;
@@ -19,8 +20,8 @@ public class Hotel {
 
     public Hotel(String name) {
         if (name == null || name.isBlank()) {
-			throw new IllegalArgumentException("Hotel name cannot be empty");
-		}
+            throw new IllegalArgumentException("Hotel name cannot be empty");
+        }
         this.name = name;
         this.rooms = new ArrayList<>();
         this.reservations = new ArrayList<>();
@@ -28,8 +29,8 @@ public class Hotel {
 
     public void addRoom(Room room) {
         if (room == null) {
-			throw new IllegalArgumentException("Room cannot be null");
-		}
+            throw new IllegalArgumentException("Room cannot be null");
+        }
         rooms.add(room);
     }
 
@@ -45,6 +46,10 @@ public class Hotel {
         return name;
     }
 
+    /**
+     * Checks if a room of the given type is available for the given dates.
+     * Availability requires checking both date overlaps and current room state.
+     */
     public boolean available(LocalDate startDate, LocalDate endDate, RoomType roomType) {
         return rooms.stream()
                 .filter(room -> room.getRoomType().equals(roomType))
@@ -52,50 +57,58 @@ public class Hotel {
     }
 
     private boolean isRoomAvailable(Room room, LocalDate startDate, LocalDate endDate) {
-        // Simple check: if room is FREE, it's available?
-        // No, we need to check against existing reservations for dates properly.
-        // But the Room State is "FREE, RESERVED, OCCUPIED".
-        // This state pattern is simplistic and doesn't handle future dates well unless "Reserved" means "Reserved for RIGHT NOW".
-        // However, the prompt implies "Conflicting Requirements (WP1): flexible... future performance".
-        // The diagram has `Reservation` with dates.
-        // So `Hotel` must check `reservations` list for overlap.
-        // AND check the current state? No, strictly date overlap for future bookings.
-
+        // Check 1: Overlap with existing reservations for this room
         for (Reservation res : reservations) {
             if (res.getRoom().equals(room)) {
-                // Check overlap
+                // If requested dates overlap with an existing reservation
+                // Standard overlap condition: (StartA < EndB) and (EndA > StartB)
+                // Assuming start date is inclusive and end date is exclusive (or checkout
+                // morning)
+
+                // If the user wants STRICT day overlap:
+                // [10, 12] overlaps [11, 13]? Yes.
+                // 10 < 13 && 12 > 11. True.
                 if (startDate.isBefore(res.getEndDate()) && endDate.isAfter(res.getStartDate())) {
                     return false;
                 }
             }
         }
+
+        // Check 2: Current Room State
+        // According to the strict UML state chart (Fig 19), makeReservation can only be
+        // called if state is FREE.
+        // If the room is already RESERVED or OCCUPIED, we cannot "reserve" it again in
+        // the simple state machine.
+        // This limits the system to one active transaction per room, but aligns with
+        // strict UML instructions.
+        if (room.getState() != RoomState.FREE) {
+            return false;
+        }
+
         return true;
     }
 
-    public Reservation createReservation(LocalDate startDate, LocalDate endDate, RoomType roomType, ReserverPayer payer) {
+    public Reservation createReservation(LocalDate startDate, LocalDate endDate, RoomType roomType,
+            ReserverPayer payer) {
         Optional<Room> availableRoom = rooms.stream()
                 .filter(room -> room.getRoomType().equals(roomType))
                 .filter(room -> isRoomAvailable(room, startDate, endDate))
                 .findFirst();
 
         if (availableRoom.isEmpty()) {
-            throw new HotelException("No available room of type " + roomType.getKind());
+            throw new HotelException("No available room of type " + roomType.getKind() + " for the given dates.");
         }
 
         Room room = availableRoom.get();
-        // Determine reservation number (simple increment or random)
-        int resNum = reservations.size() + 1; // Simplistic
-        Reservation reservation = new Reservation(resNum, startDate, endDate, payer, room);
+        // Generate a reservation number (1-based index)
+        int resNum = reservations.size() + 1;
 
+        Reservation reservation = new Reservation(resNum, startDate, endDate, payer, room);
         reservations.add(reservation);
-        room.makeReservation(); // Updates state to RESERVED.
-        // IMPORTANT: Updates state? If reservation is in future, room might be FREE now.
-        // But the specific instructions say "maintain relationships... State Management: Prevent illegal object states".
-        // And Fig 19 state chart says "makeReservation() -> Reserved".
-        // So strictly following the diagram, modifying the state immediately is what is implied,
-        // assuming the system might be "reservation for immediate stay" or the state reflects "Has a reservation".
-        // BUT "Reserved" usually means "Blocked for a guest arriving soon".
-        // If I strictly follow the diagram, I must call `room.makeReservation()`.
+
+        // Update Room State (This is the critical strict UML step)
+        // This will transition the room from FREE to RESERVED.
+        room.makeReservation();
 
         return reservation;
     }
@@ -104,7 +117,7 @@ public class Hotel {
         Reservation res = reservations.stream()
                 .filter(r -> r.getReservationNumber() == reservationNumber)
                 .findFirst()
-                .orElseThrow(() -> new HotelException("Reservation not found: " + reservationNumber));
+                .orElseThrow(() -> new HotelException("Reservation #" + reservationNumber + " not found."));
 
         reservations.remove(res);
         res.getRoom().cancelReservation();
