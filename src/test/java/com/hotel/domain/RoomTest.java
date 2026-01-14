@@ -15,7 +15,7 @@ class RoomTest {
 
     @BeforeEach
     void setUp() {
-        RoomType type = new RoomType(RoomKind.single, new Money(BigDecimal.TEN, Currency.getInstance("USD")));
+        RoomType type = new RoomType(RoomKind.SINGLE, new Money(BigDecimal.TEN, Currency.getInstance("USD")));
         room = new Room(101, type);
         guest = new Guest("John", new Address("St", "City", "Zip"), new Identity("P", "1"));
     }

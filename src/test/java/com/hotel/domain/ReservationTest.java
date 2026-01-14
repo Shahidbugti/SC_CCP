@@ -10,7 +10,8 @@ class ReservationTest {
 
     @Test
     void testReservationCreation_Success() {
-        ReserverPayer payer = new ReserverPayer(new Identity("P", "1"), new CreditCard("123", "12/12", "123"));
+        ReserverPayer payer = new ReserverPayer(new Identity("P", "1"),
+                new CreditCard("1234567890123", "12/12", "123"));
         RoomType type = new RoomType(RoomKind.DOUBLE, new Money(BigDecimal.TEN, Currency.getInstance("USD")));
         Room room = new Room(101, type);
 
@@ -28,7 +29,8 @@ class ReservationTest {
 
     @Test
     void testReservationCreation_InvalidDates() {
-        ReserverPayer payer = new ReserverPayer(new Identity("P", "1"), new CreditCard("123", "12/12", "123"));
+        ReserverPayer payer = new ReserverPayer(new Identity("P", "1"),
+                new CreditCard("1234567890123", "12/12", "123"));
         RoomType type = new RoomType(RoomKind.DOUBLE, new Money(BigDecimal.TEN, Currency.getInstance("USD")));
         Room room = new Room(101, type);
 
@@ -42,7 +44,8 @@ class ReservationTest {
 
     @Test
     void testReservationCreation_NullInputs() {
-        ReserverPayer payer = new ReserverPayer(new Identity("P", "1"), new CreditCard("123", "12/12", "123"));
+        ReserverPayer payer = new ReserverPayer(new Identity("P", "1"),
+                new CreditCard("1234567890123", "12/12", "123"));
         RoomType type = new RoomType(RoomKind.DOUBLE, new Money(BigDecimal.TEN, Currency.getInstance("USD")));
         Room room = new Room(101, type);
 

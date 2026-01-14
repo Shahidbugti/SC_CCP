@@ -26,7 +26,7 @@ class HotelTest {
         Room room1 = new Room(101, doubleRoomType);
         hotel.addRoom(room1);
 
-        payer = new ReserverPayer(new Identity("P", "123"), new CreditCard("1234", "12/25", "111"));
+        payer = new ReserverPayer(new Identity("P", "123"), new CreditCard("1234567890123", "12/25", "111"));
     }
 
     @Test

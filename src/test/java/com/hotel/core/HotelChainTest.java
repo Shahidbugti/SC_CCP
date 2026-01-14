@@ -33,7 +33,8 @@ class HotelChainTest {
 
     @Test
     void testMakeReservation_DelegatesToHotel() {
-        ReserverPayer payer = chain.createReserverPayer(new Identity("id", "1"), new CreditCard("cc", "ex", "cv"));
+        ReserverPayer payer = chain.createReserverPayer(new Identity("id", "1"),
+                new CreditCard("1234567890123", "12/25", "123"));
         RoomType type = hotel.getRooms().get(0).getRoomType();
 
         Reservation res = chain.makeReservation("Hotel 1", LocalDate.now(), LocalDate.now().plusDays(1), type, payer);
