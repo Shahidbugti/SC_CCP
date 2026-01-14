@@ -1,7 +1,6 @@
 package com.hotel.domain;
 
 import java.util.Objects;
-
 import com.hotel.exception.HotelException;
 
 public class Room {
@@ -35,29 +34,37 @@ public class Room {
         return occupant;
     }
 
+    /**
+     * Transitions state from FREE to RESERVED.
+     */
     public void makeReservation() {
         if (state != RoomState.FREE) {
-            throw new HotelException("Cannot reserve room " + number + "; implementation state is " + state);
+            throw new HotelException(
+                    String.format("Room %d is not free (current state: %s). Cannot make reservation.", number, state));
         }
-        // In a real system, we'd check dates. Here we follow the simple state chart.
         this.state = RoomState.RESERVED;
     }
 
+    /**
+     * Transitions state from RESERVED to FREE.
+     */
     public void cancelReservation() {
         if (state != RoomState.RESERVED) {
-            throw new HotelException("Cannot cancel reservation for room " + number + "; is not reserved");
+            throw new HotelException(String
+                    .format("Room %d is not reserved (current state: %s). Cannot cancel reservation.", number, state));
         }
         this.state = RoomState.FREE;
     }
 
+    /**
+     * Transitions state from RESERVED to OCCUPIED.
+     * 
+     * @param guest The guest checking in.
+     */
     public void checkInGuest(Guest guest) {
-        if (state != RoomState.RESERVED && state != RoomState.FREE) {
-             // Depending on policy, maybe walk-ins are allowed (Free -> Occupied)
-             // But diagram state chart has Free -> Reserved -> Occupied (triangle)
-             // Actually Fig 19 shows: Free -> Reserved -> Occupied.
-             // And Occupied -> Free.
-             // Wait, the arrow checkInGuest is from Reserved to Occupied.
-             throw new HotelException("Room " + number + " must be reserved before check-in or is already occupied");
+        if (state != RoomState.RESERVED) {
+            throw new HotelException(
+                    String.format("Room %d must be reserved before check-in (current state: %s).", number, state));
         }
         if (guest == null) {
             throw new IllegalArgumentException("Guest cannot be null");
@@ -66,9 +73,13 @@ public class Room {
         this.occupant = guest;
     }
 
+    /**
+     * Transitions state from OCCUPIED to FREE.
+     */
     public void checkOutGuest() {
         if (state != RoomState.OCCUPIED) {
-            throw new HotelException("Cannot check out from room " + number + "; implementation is not occupied");
+            throw new HotelException(
+                    String.format("Room %d is not occupied (current state: %s). Cannot check out.", number, state));
         }
         this.state = RoomState.FREE;
         this.occupant = null;
@@ -76,12 +87,10 @@ public class Room {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) {
-			return true;
-		}
-        if (o == null || getClass() != o.getClass()) {
-			return false;
-		}
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Room room = (Room) o;
         return number == room.number;
     }
