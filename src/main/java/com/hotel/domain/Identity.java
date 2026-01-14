@@ -8,27 +8,35 @@ public class Identity {
 
     public Identity(String type, String idNumber) {
         if (type == null || type.isBlank()) {
-			throw new IllegalArgumentException("Identity type cannot be empty");
-		}
+            throw new IllegalArgumentException("Identity type cannot be empty");
+        }
         if (idNumber == null || idNumber.isBlank()) {
-			throw new IllegalArgumentException("ID number cannot be empty");
-		}
+            throw new IllegalArgumentException("ID number cannot be empty");
+        }
 
         this.type = type;
         this.idNumber = idNumber;
     }
 
+    public String getType() {
+        return type;
+    }
+
+    public String getIdNumber() {
+        return idNumber;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {
-			return true;
-		}
+            return true;
+        }
         if (o == null || getClass() != o.getClass()) {
-			return false;
-		}
+            return false;
+        }
         Identity identity = (Identity) o;
         return Objects.equals(idNumber, identity.idNumber) &&
-               Objects.equals(type, identity.type);
+                Objects.equals(type, identity.type);
     }
 
     @Override
