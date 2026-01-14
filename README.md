@@ -1,24 +1,39 @@
-# Hotel Reservation System - Complex Computing Problem (CCP)
+# Hotel Reservation System - CCP Project
 
 ## Project Overview
-This project is a Java-based Hotel Reservation System developed for the Software Construction course. It translates a UML class diagram into a functional system using Object-Oriented Design (OOD), Clean Code principles, and Defensive Programming.
+This is a **Java-based Hotel Reservation System** implementing a UML class design.  
+It manages hotels, rooms, guests, and reservations, demonstrating:
+- Making and canceling reservations  
+- Checking room availability  
+- Guest check-in and check-out  
+- Defensive programming and clean code principles  
 
-The system handles hotel management, room inventory, guest registration, and the full lifecycle of a reservation (Booking, Check-in, Check-out, and Cancellation).
+---
 
-## Key Features
-- **Strict UML Compliance:** All relationships (Composition, Aggregation, Inheritance) are implemented as per the design.
-- **Defensive Programming:** Robust validation for inputs and illegal state transitions (e.g., booking an occupied room).
-- **Automated Testing:** Comprehensive JUnit test suite using the AAA (Arrange-Act-Assert) pattern.
-- **Clean Code:** Adherence to meaningful naming, modularity, and DRY principles.
+## How to Build & Run
 
-## Prerequisites
-- **Java JDK 17** or higher
-- **Gradle** (if using the wrapper provided)
-- **VS Code** (recommended IDE)
+1. **Compile all classes**:
 
-## Instructions to Build and Run
-
-### 1. Build the Project
-Open your terminal in the project root and run:
 ```powershell
-./gradlew build
+javac -cp "bin;lib/junit-platform-console-standalone-1.10.0.jar" -d bin src/main/java/**/*.java src/test/java/**/*.java
+Run the main program:
+
+java -cp bin com.hotel.Main
+
+
+Run all tests:
+
+java -jar lib/junit-platform-console-standalone-1.10.0.jar -cp bin --scan-classpath
+
+
+All tests should pass successfully.
+
+Features
+
+Implements UML design exactly
+
+Defensive programming with input validation
+
+Clean, modular, maintainable code
+
+JUnit tests cover normal, boundary, and invalid cases
