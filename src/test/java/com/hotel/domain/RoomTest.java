@@ -3,6 +3,8 @@ package com.hotel.domain;
 import static org.junit.jupiter.api.Assertions.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import com.hotel.exception.HotelException;
 import java.math.BigDecimal;
@@ -21,48 +23,148 @@ class RoomTest {
     }
 
     @Test
-    void testInitialState() {
-        assertEquals(RoomState.FREE, room.getState());
+    void testInitialState_ShouldBeFree() {
+        // Arrange
+        // (Setup done in @BeforeEach)
+
+        // Act
+        RoomState state = room.getState();
+
+        // Assert
+        assertEquals(RoomState.FREE, state, "Initial room state should be FREE");
+    }
+
+    @ParameterizedTest
+    @EnumSource(RoomKind.class)
+    void testRoomCreation_AllRoomKinds_Success(RoomKind kind) {
+        // Arrange
+        RoomType type = new RoomType(kind, new Money(BigDecimal.valueOf(100), Currency.getInstance("USD")));
+
+        // Act
+        Room newRoom = new Room(201, type);
+
+        // Assert
+        assertNotNull(newRoom, "Room should be created for kind: " + kind);
+        assertEquals(kind, newRoom.getRoomType().getKind(), "Room kind should match");
+        assertEquals(RoomState.FREE, newRoom.getState(), "New room should be in FREE state");
     }
 
     @Test
-    void testMakeReservation_Success() {
+    void testMakeReservation_WhenFree_TransitionsToReserved() {
+        // Arrange
+        // (Room is FREE from @BeforeEach)
+
+        // Act
         room.makeReservation();
-        assertEquals(RoomState.RESERVED, room.getState());
+
+        // Assert
+        assertEquals(RoomState.RESERVED, room.getState(), "Room state should transition to RESERVED");
     }
 
     @Test
-    void testMakeReservation_FailWhenNotFree() {
+    void testMakeReservation_WhenAlreadyReserved_ThrowsException() {
+        // Arrange
         room.makeReservation(); // State -> RESERVED
 
-        assertThrows(HotelException.class, () -> {
-            room.makeReservation();
-        });
+        // Act & Assert
+        assertThrows(HotelException.class, () -> room.makeReservation(),
+                "Making reservation on already reserved room should throw HotelException");
     }
 
     @Test
-    void testCheckIn_Success() {
+    void testCheckInGuest_WhenReserved_TransitionsToOccupied() {
+        // Arrange
         room.makeReservation();
+
+        // Act
         room.checkInGuest(guest);
-        assertEquals(RoomState.OCCUPIED, room.getState());
-        assertEquals(guest, room.getOccupant());
+
+        // Assert
+        assertEquals(RoomState.OCCUPIED, room.getState(), "Room state should transition to OCCUPIED");
+        assertEquals(guest, room.getOccupant(), "Occupant should be the checked-in guest");
     }
 
     @Test
-    void testCheckIn_FailWhenNotReserved() {
+    void testCheckInGuest_WhenFree_ThrowsException() {
+        // Arrange
         // Room is FREE
-        assertThrows(HotelException.class, () -> {
-            room.checkInGuest(guest);
-        });
+
+        // Act & Assert
+        assertThrows(HotelException.class, () -> room.checkInGuest(guest),
+                "Checking in guest to FREE room should throw HotelException");
     }
 
     @Test
-    void testCheckOut_Success() {
+    void testCheckInGuest_NullGuest_ThrowsException() {
+        // Arrange
+        room.makeReservation();
+
+        // Act & Assert
+        assertThrows(IllegalArgumentException.class, () -> room.checkInGuest(null),
+                "Checking in null guest should throw IllegalArgumentException");
+    }
+
+    @Test
+    void testCheckOutGuest_WhenOccupied_TransitionsToFree() {
+        // Arrange
         room.makeReservation();
         room.checkInGuest(guest);
+
+        // Act
         room.checkOutGuest();
 
-        assertEquals(RoomState.FREE, room.getState());
-        assertNull(room.getOccupant());
+        // Assert
+        assertEquals(RoomState.FREE, room.getState(), "Room state should transition to FREE");
+        assertNull(room.getOccupant(), "Occupant should be null after checkout");
+    }
+
+    @Test
+    void testCheckOutGuest_WhenNotOccupied_ThrowsException() {
+        // Arrange
+        // Room is FREE
+
+        // Act & Assert
+        assertThrows(HotelException.class, () -> room.checkOutGuest(),
+                "Checking out from non-occupied room should throw HotelException");
+    }
+
+    @Test
+    void testCancelReservation_WhenReserved_TransitionsToFree() {
+        // Arrange
+        room.makeReservation();
+
+        // Act
+        room.cancelReservation();
+
+        // Assert
+        assertEquals(RoomState.FREE, room.getState(), "Room state should transition to FREE");
+    }
+
+    @Test
+    void testCancelReservation_WhenNotReserved_ThrowsException() {
+        // Arrange
+        // Room is FREE
+
+        // Act & Assert
+        assertThrows(HotelException.class, () -> room.cancelReservation(),
+                "Cancelling reservation on non-reserved room should throw HotelException");
+    }
+
+    @Test
+    void testCompleteRoomLifecycle() {
+        // Arrange
+        // Room starts as FREE
+
+        // Act & Assert - Complete lifecycle
+        assertEquals(RoomState.FREE, room.getState(), "Initial state should be FREE");
+
+        room.makeReservation();
+        assertEquals(RoomState.RESERVED, room.getState(), "After reservation should be RESERVED");
+
+        room.checkInGuest(guest);
+        assertEquals(RoomState.OCCUPIED, room.getState(), "After check-in should be OCCUPIED");
+
+        room.checkOutGuest();
+        assertEquals(RoomState.FREE, room.getState(), "After checkout should be FREE");
     }
 }
