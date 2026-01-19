@@ -13,20 +13,34 @@ import com.hotel.domain.RoomType;
 import com.hotel.exception.HotelException;
 import com.hotel.domain.RoomState;
 
+/**
+ * Represents a hotel with rooms and reservation management.
+ */
 public class Hotel {
     private final String name;
     private final List<Room> rooms;
     private final List<Reservation> reservations;
 
     public Hotel(String name) {
-        if (name == null || name.isBlank()) {
-            throw new IllegalArgumentException("Hotel name cannot be empty");
-        }
+        validateHotelName(name);
+
         this.name = name;
         this.rooms = new ArrayList<>();
         this.reservations = new ArrayList<>();
     }
 
+    /**
+     * Validates that hotel name is provided.
+     */
+    private void validateHotelName(String hotelName) {
+        if (hotelName == null || hotelName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Hotel name is required");
+        }
+    }
+
+    /**
+     * Adds a room to this hotel.
+     */
     public void addRoom(Room room) {
         if (room == null) {
             throw new IllegalArgumentException("Room cannot be null");
@@ -47,79 +61,122 @@ public class Hotel {
     }
 
     /**
-     * Checks if a room of the given type is available for the given dates.
-     * Availability requires checking both date overlaps and current room state.
+     * Checks if a room of the given type is available for the specified dates.
+     * A room is available if:
+     * 1. It's currently in FREE state
+     * 2. No existing reservations overlap with the requested dates
      */
     public boolean available(LocalDate startDate, LocalDate endDate, RoomType roomType) {
-        return rooms.stream()
-                .filter(room -> room.getRoomType().equals(roomType))
-                .anyMatch(room -> isRoomAvailable(room, startDate, endDate));
+        return findAvailableRoom(startDate, endDate, roomType).isPresent();
     }
 
-    private boolean isRoomAvailable(Room room, LocalDate startDate, LocalDate endDate) {
-        // Check 1: Overlap with existing reservations for this room
-        for (Reservation res : reservations) {
-            if (res.getRoom().equals(room)) {
-                // If requested dates overlap with an existing reservation
-                // Standard overlap condition: (StartA < EndB) and (EndA > StartB)
-                // Assuming start date is inclusive and end date is exclusive (or checkout
-                // morning)
+    /**
+     * Finds an available room of the specified type for the given dates.
+     */
+    private Optional<Room> findAvailableRoom(LocalDate startDate, LocalDate endDate, RoomType roomType) {
+        return rooms.stream()
+                .filter(room -> room.getRoomType().equals(roomType))
+                .filter(room -> canBookRoom(room, startDate, endDate))
+                .findFirst();
+    }
 
-                // If the user wants STRICT day overlap:
-                // [10, 12] overlaps [11, 13]? Yes.
-                // 10 < 13 && 12 > 11. True.
-                if (startDate.isBefore(res.getEndDate()) && endDate.isAfter(res.getStartDate())) {
-                    return false;
-                }
-            }
-        }
-
-        // Check 2: Current Room State
-        // According to the strict UML state chart (Fig 19), makeReservation can only be
-        // called if state is FREE.
-        // If the room is already RESERVED or OCCUPIED, we cannot "reserve" it again in
-        // the simple state machine.
-        // This limits the system to one active transaction per room, but aligns with
-        // strict UML instructions.
-        if (room.getState() != RoomState.FREE) {
+    /**
+     * Checks if a specific room can be booked for the given dates.
+     * Returns true if room is free and has no date conflicts.
+     */
+    private boolean canBookRoom(Room room, LocalDate startDate, LocalDate endDate) {
+        // First check: Room must be in FREE state
+        if (!room.isFree()) {
             return false;
         }
 
-        return true;
+        // Second check: No date overlap with existing reservations
+        return !hasDateConflict(room, startDate, endDate);
     }
 
-    public Reservation createReservation(LocalDate startDate, LocalDate endDate, RoomType roomType,
-            ReserverPayer payer) {
-        Optional<Room> availableRoom = rooms.stream()
-                .filter(room -> room.getRoomType().equals(roomType))
-                .filter(room -> isRoomAvailable(room, startDate, endDate))
-                .findFirst();
+    /**
+     * Checks if the room has any reservation that overlaps with the given dates.
+     */
+    private boolean hasDateConflict(Room room, LocalDate startDate, LocalDate endDate) {
+        for (Reservation existingReservation : reservations) {
+            if (existingReservation.getRoom().equals(room)) {
+                if (datesOverlap(startDate, endDate, existingReservation)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if two date ranges overlap.
+     * Overlap occurs when: (StartA < EndB) AND (EndA > StartB)
+     */
+    private boolean datesOverlap(LocalDate startDate, LocalDate endDate, Reservation reservation) {
+        return startDate.isBefore(reservation.getEndDate()) &&
+                endDate.isAfter(reservation.getStartDate());
+    }
+
+    /**
+     * Creates a new reservation for the specified room type and dates.
+     * This will book an available room and create a reservation record.
+     */
+    public Reservation createReservation(LocalDate startDate, LocalDate endDate,
+            RoomType roomType, ReserverPayer payer) {
+        // Find an available room
+        Optional<Room> availableRoom = findAvailableRoom(startDate, endDate, roomType);
 
         if (availableRoom.isEmpty()) {
-            throw new HotelException("No available room of type " + roomType.getKind() + " for the given dates.");
+            String errorMsg = String.format(
+                    "No rooms of type %s available for the requested dates",
+                    roomType.getKind());
+            throw new HotelException(errorMsg);
         }
 
         Room room = availableRoom.get();
-        // Generate a reservation number (1-based index)
-        int resNum = reservations.size() + 1;
 
-        Reservation reservation = new Reservation(resNum, startDate, endDate, payer, room);
+        // Generate unique reservation number
+        int reservationNumber = generateReservationNumber();
+
+        // Create the reservation object
+        Reservation reservation = new Reservation(
+                reservationNumber, startDate, endDate, payer, room);
         reservations.add(reservation);
 
-        // Update Room State (This is the critical strict UML step)
-        // This will transition the room from FREE to RESERVED.
-        room.makeReservation();
+        // Update room state to RESERVED (book the room)
+        room.bookRoom();
 
         return reservation;
     }
 
+    /**
+     * Generates a unique reservation number based on current reservations.
+     */
+    private int generateReservationNumber() {
+        return reservations.size() + 1;
+    }
+
+    /**
+     * Cancels an existing reservation and frees up the room.
+     */
     public void cancelReservation(int reservationNumber) {
-        Reservation res = reservations.stream()
+        Reservation reservation = findReservationByNumber(reservationNumber);
+
+        // Remove reservation from list
+        reservations.remove(reservation);
+
+        // Free up the room (change state from RESERVED to FREE)
+        reservation.getRoom().cancelBooking();
+    }
+
+    /**
+     * Finds a reservation by its number or throws an exception if not found.
+     */
+    private Reservation findReservationByNumber(int reservationNumber) {
+        return reservations.stream()
                 .filter(r -> r.getReservationNumber() == reservationNumber)
                 .findFirst()
-                .orElseThrow(() -> new HotelException("Reservation #" + reservationNumber + " not found."));
-
-        reservations.remove(res);
-        res.getRoom().cancelReservation();
+                .orElseThrow(() -> new HotelException(
+                        "Reservation #" + reservationNumber + " not found"));
     }
 }

@@ -6,9 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Currency;
 
 import com.hotel.domain.*;
 import com.hotel.exception.HotelException;
@@ -21,14 +19,15 @@ class HotelTest {
 
     @BeforeEach
     void setUp() {
-        hotel = new Hotel("Test Hotel");
-        Currency usd = Currency.getInstance("USD");
-        doubleRoomType = new RoomType(RoomKind.DOUBLE, new Money(new BigDecimal("100"), usd));
+        hotel = new Hotel("The Grand Budapest");
+        // Using humanized Money constructor
+        doubleRoomType = new RoomType(RoomKind.DOUBLE, new Money(100.0, "USD"));
 
         Room room1 = new Room(101, doubleRoomType);
         hotel.addRoom(room1);
 
-        payer = new ReserverPayer(new Identity("P", "123"), new CreditCard("1234567890123", "12/25", "111"));
+        payer = new ReserverPayer(new Identity("Passport", "P123"),
+                new CreditCard("1234567890123", "12/25", "111"));
     }
 
     @Test
@@ -41,7 +40,7 @@ class HotelTest {
         boolean available = hotel.available(start, end, doubleRoomType);
 
         // Assert
-        assertTrue(available, "Room should be available when free");
+        assertTrue(available, "Room should be available when free and no conflicts exist");
     }
 
     @ParameterizedTest
@@ -72,9 +71,9 @@ class HotelTest {
         Reservation res = hotel.createReservation(start, end, doubleRoomType, payer);
 
         // Assert
-        assertNotNull(res, "Reservation should be created");
-        assertEquals(101, res.getRoom().getNumber(), "Room number should match");
-        assertEquals(RoomState.RESERVED, res.getRoom().getState(), "Room should be in RESERVED state");
+        assertNotNull(res, "Reservation should be successfully created");
+        assertEquals(101, res.getRoom().getNumber(), "Correct room should be assigned");
+        assertTrue(res.getRoom().isBooked(), "Room state should transition to RESERVED");
     }
 
     @Test
@@ -86,7 +85,7 @@ class HotelTest {
 
         // Act & Assert
         assertThrows(HotelException.class, () -> hotel.createReservation(start, end, doubleRoomType, payer),
-                "Creating overlapping reservation should throw HotelException");
+                "Creating overlapping reservation should throw HotelException due to conflict");
     }
 
     @Test
@@ -94,7 +93,7 @@ class HotelTest {
         // Arrange
         LocalDate start = LocalDate.now().plusDays(10);
         LocalDate end = LocalDate.now().plusDays(15);
-        hotel.createReservation(start, end, doubleRoomType, payer); // Make one reservation
+        hotel.createReservation(start, end, doubleRoomType, payer); // Make one reservation (sets room 101 to RESERVED)
 
         // Try making another one for DIFFERENT dates
         LocalDate start2 = LocalDate.now().plusDays(20);
@@ -104,7 +103,7 @@ class HotelTest {
         boolean available = hotel.available(start2, end2, doubleRoomType);
 
         // Assert
-        assertFalse(available, "Room should be unavailable if state is RESERVED (strict UML state chart)");
+        assertFalse(available, "Room should be unavailable if state is RESERVED (strictly following UML state chart)");
     }
 
     @Test
@@ -119,55 +118,41 @@ class HotelTest {
         hotel.cancelReservation(resNum);
 
         // Assert
-        assertEquals(RoomState.FREE, res.getRoom().getState(), "Room should be FREE after cancellation");
-        assertEquals(0, hotel.getReservations().size(), "Reservations list should be empty");
+        assertTrue(res.getRoom().isFree(), "Room should return to FREE state after cancellation");
+        assertEquals(0, hotel.getReservations().size(), "Reservation record should be removed from the system");
     }
 
     @Test
     void testCancelReservation_InvalidNumber_ThrowsException() {
-        // Arrange
-        int invalidResNum = 999;
-
         // Act & Assert
-        assertThrows(HotelException.class, () -> hotel.cancelReservation(invalidResNum),
+        assertThrows(HotelException.class, () -> hotel.cancelReservation(999),
                 "Cancelling non-existent reservation should throw HotelException");
     }
 
     @Test
     void testAddRoom_ValidRoom_Success() {
         // Arrange
-        RoomType singleType = new RoomType(RoomKind.SINGLE,
-                new Money(new BigDecimal("75"), Currency.getInstance("USD")));
+        RoomType singleType = new RoomType(RoomKind.SINGLE, new Money(75.0, "USD"));
         Room newRoom = new Room(102, singleType);
 
         // Act
         hotel.addRoom(newRoom);
 
         // Assert
-        assertEquals(2, hotel.getRooms().size(), "Hotel should have 2 rooms");
-        assertTrue(hotel.getRooms().contains(newRoom), "Hotel should contain the new room");
+        assertEquals(2, hotel.getRooms().size(), "Hotel should now have 2 rooms");
+        assertTrue(hotel.getRooms().contains(newRoom), "New room should be present in the inventory");
     }
 
     @Test
     void testAddRoom_NullRoom_ThrowsException() {
-        // Arrange
-        Room nullRoom = null;
-
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () -> hotel.addRoom(nullRoom),
+        assertThrows(IllegalArgumentException.class, () -> hotel.addRoom(null),
                 "Adding null room should throw IllegalArgumentException");
     }
 
     @Test
     void testGetName() {
-        // Arrange
-        // (Hotel created in @BeforeEach)
-
-        // Act
-        String name = hotel.getName();
-
-        // Assert
-        assertEquals("Test Hotel", name, "Hotel name should match");
+        assertEquals("The Grand Budapest", hotel.getName(), "Hotel name should be correctly retrieved");
     }
 
     @Test
@@ -180,6 +165,6 @@ class HotelTest {
         // Act & Assert
         assertThrows(UnsupportedOperationException.class,
                 () -> hotel.getReservations().clear(),
-                "Reservations list should be unmodifiable");
+                "Reservations list should be unmodifiable to protect data integrity");
     }
 }

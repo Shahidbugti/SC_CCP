@@ -6,158 +6,148 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.Currency;
 
 import com.hotel.domain.*;
 import com.hotel.exception.HotelException;
 
 class HotelChainTest {
 
-    private HotelChain chain;
-    private Hotel hotel;
+        private HotelChain chain;
+        private Hotel hotel;
 
-    @BeforeEach
-    void setUp() {
-        chain = new HotelChain("Chain 1");
-        hotel = new Hotel("Hotel 1");
-        chain.addHotel(hotel);
+        @BeforeEach
+        void setUp() {
+                chain = new HotelChain("Prestige Group");
+                hotel = new Hotel("The Grand Budapest");
+                chain.addHotel(hotel);
 
-        RoomType type = new RoomType(RoomKind.DOUBLE, new Money(BigDecimal.TEN, Currency.getInstance("USD")));
-        hotel.addRoom(new Room(101, type));
-    }
+                // Using humanized Money constructor
+                RoomType type = new RoomType(RoomKind.DOUBLE, new Money(100.0, "USD"));
+                hotel.addRoom(new Room(101, type));
+        }
 
-    @Test
-    void testAddHotel_ValidHotel_Success() {
-        // Arrange
-        // (Hotel added in @BeforeEach)
+        @Test
+        void testAddHotel_ValidHotel_Success() {
+                // Assert
+                assertEquals(1, chain.getHotels().size(), "Chain should contain exactly one hotel");
+                assertEquals("The Grand Budapest", chain.getHotels().get(0).getName(), "Hotel name should match");
+        }
 
-        // Act
-        int hotelCount = chain.getHotels().size();
-        String hotelName = chain.getHotels().get(0).getName();
+        @Test
+        void testAddHotel_NullHotel_ThrowsException() {
+                // Act & Assert
+                assertThrows(IllegalArgumentException.class, () -> chain.addHotel(null),
+                                "Adding null hotel should throw IllegalArgumentException");
+        }
 
-        // Assert
-        assertEquals(1, hotelCount, "Chain should contain exactly one hotel");
-        assertEquals("Hotel 1", hotelName, "Hotel name should match");
-    }
+        @ParameterizedTest
+        @ValueSource(strings = { "Hotel A", "Hotel B", "Hotel C" })
+        void testAddHotel_MultipleHotels_Success(String hotelName) {
+                // Arrange
+                Hotel newHotel = new Hotel(hotelName);
 
-    @Test
-    void testAddHotel_NullHotel_ThrowsException() {
-        // Arrange
-        Hotel nullHotel = null;
+                // Act
+                chain.addHotel(newHotel);
 
-        // Act & Assert
-        assertThrows(IllegalArgumentException.class, () -> chain.addHotel(nullHotel),
-                "Adding null hotel should throw IllegalArgumentException");
-    }
+                // Assert
+                assertTrue(chain.getHotels().contains(newHotel),
+                                "Chain should contain hotel: " + hotelName);
+        }
 
-    @ParameterizedTest
-    @ValueSource(strings = { "Hotel A", "Hotel B", "Hotel C" })
-    void testAddHotel_MultipleHotels_Success(String hotelName) {
-        // Arrange
-        Hotel newHotel = new Hotel(hotelName);
+        @Test
+        void testMakeReservation_DelegatesToHotel_Success() {
+                // Arrange
+                ReserverPayer payer = chain.createReserverPayer(new Identity("ID", "1"),
+                                new CreditCard("1234567890123", "12/25", "123"));
+                RoomType type = hotel.getRooms().get(0).getRoomType();
 
-        // Act
-        chain.addHotel(newHotel);
+                // Act
+                Reservation res = chain.makeReservation("The Grand Budapest", LocalDate.now(),
+                                LocalDate.now().plusDays(1), type, payer);
 
-        // Assert
-        assertTrue(chain.getHotels().contains(newHotel),
-                "Chain should contain hotel: " + hotelName);
-    }
+                // Assert
+                assertNotNull(res, "Reservation should be successfully created via the chain");
+                assertEquals(1, hotel.getReservations().size(), "Hotel should have one reservation record");
+        }
 
-    @Test
-    void testMakeReservation_DelegatesToHotel_Success() {
-        // Arrange
-        ReserverPayer payer = chain.createReserverPayer(new Identity("id", "1"),
-                new CreditCard("1234567890123", "12/25", "123"));
-        RoomType type = hotel.getRooms().get(0).getRoomType();
+        @Test
+        void testMakeReservation_HotelNotFound_ThrowsException() {
+                // Arrange
+                ReserverPayer payer = chain.createReserverPayer(new Identity("ID", "1"),
+                                new CreditCard("1234567890123", "12/25", "123"));
+                RoomType type = hotel.getRooms().get(0).getRoomType();
 
-        // Act
-        Reservation res = chain.makeReservation("Hotel 1", LocalDate.now(), LocalDate.now().plusDays(1), type, payer);
+                // Act & Assert
+                assertThrows(HotelException.class,
+                                () -> chain.makeReservation("Ghost Hotel", LocalDate.now(),
+                                                LocalDate.now().plusDays(1), type, payer),
+                                "Making reservation at non-existent hotel should throw HotelException");
+        }
 
-        // Assert
-        assertNotNull(res, "Reservation should be created");
-        assertEquals(1, hotel.getReservations().size(), "Hotel should have one reservation");
-    }
+        @Test
+        void testCancelReservation_ValidReservation_Success() {
+                // Arrange
+                ReserverPayer payer = chain.createReserverPayer(new Identity("ID", "1"),
+                                new CreditCard("1234567890123", "12/25", "123"));
+                RoomType type = hotel.getRooms().get(0).getRoomType();
+                Reservation res = chain.makeReservation("The Grand Budapest", LocalDate.now(),
+                                LocalDate.now().plusDays(1), type, payer);
 
-    @Test
-    void testMakeReservation_HotelNotFound_ThrowsException() {
-        // Arrange
-        ReserverPayer payer = chain.createReserverPayer(new Identity("id", "1"),
-                new CreditCard("1234567890123", "12/25", "123"));
-        RoomType type = hotel.getRooms().get(0).getRoomType();
+                // Act
+                chain.cancelReservation("The Grand Budapest", res.getReservationNumber());
 
-        // Act & Assert
-        assertThrows(HotelException.class,
-                () -> chain.makeReservation("Nonexistent Hotel", LocalDate.now(),
-                        LocalDate.now().plusDays(1), type, payer),
-                "Making reservation at non-existent hotel should throw HotelException");
-    }
+                // Assert
+                assertEquals(0, hotel.getReservations().size(), "Hotel should have no reservations after cancellation");
+        }
 
-    @Test
-    void testCancelReservation_ValidReservation_Success() {
-        // Arrange
-        ReserverPayer payer = chain.createReserverPayer(new Identity("id", "1"),
-                new CreditCard("1234567890123", "12/25", "123"));
-        RoomType type = hotel.getRooms().get(0).getRoomType();
-        Reservation res = chain.makeReservation("Hotel 1", LocalDate.now(),
-                LocalDate.now().plusDays(1), type, payer);
+        @Test
+        void testCheckInGuest_ValidRoom_Success() {
+                // Arrange
+                ReserverPayer payer = chain.createReserverPayer(new Identity("ID", "1"),
+                                new CreditCard("1234567890123", "12/25", "123"));
+                RoomType type = hotel.getRooms().get(0).getRoomType();
+                chain.makeReservation("The Grand Budapest", LocalDate.now(), LocalDate.now().plusDays(1), type, payer);
+                Guest guest = new Guest("John Doe", new Address("St", "City", "Zip"), new Identity("P", "1"));
 
-        // Act
-        chain.cancelReservation("Hotel 1", res.getReservationNumber());
+                // Act
+                chain.checkInGuest("The Grand Budapest", 101, guest);
 
-        // Assert
-        assertEquals(0, hotel.getReservations().size(), "Hotel should have no reservations");
-    }
+                // Assert
+                assertEquals(RoomState.OCCUPIED, hotel.getRooms().get(0).getState(),
+                                "Room should be in OCCUPIED state after check-in");
+        }
 
-    @Test
-    void testCheckInGuest_ValidRoom_Success() {
-        // Arrange
-        ReserverPayer payer = chain.createReserverPayer(new Identity("id", "1"),
-                new CreditCard("1234567890123", "12/25", "123"));
-        RoomType type = hotel.getRooms().get(0).getRoomType();
-        chain.makeReservation("Hotel 1", LocalDate.now(), LocalDate.now().plusDays(1), type, payer);
-        Guest guest = new Guest("John Doe", new Address("St", "City", "Zip"), new Identity("P", "1"));
+        @Test
+        void testCheckOutGuest_ValidRoom_Success() {
+                // Arrange
+                ReserverPayer payer = chain.createReserverPayer(new Identity("ID", "1"),
+                                new CreditCard("1234567890123", "12/25", "123"));
+                RoomType type = hotel.getRooms().get(0).getRoomType();
+                chain.makeReservation("The Grand Budapest", LocalDate.now(), LocalDate.now().plusDays(1), type, payer);
+                Guest guest = new Guest("John Doe", new Address("St", "City", "Zip"), new Identity("P", "1"));
+                chain.checkInGuest("The Grand Budapest", 101, guest);
 
-        // Act
-        chain.checkInGuest("Hotel 1", 101, guest);
+                // Act
+                chain.checkOutGuest("The Grand Budapest", 101);
 
-        // Assert
-        assertEquals(RoomState.OCCUPIED, hotel.getRooms().get(0).getState(),
-                "Room should be in OCCUPIED state");
-    }
+                // Assert
+                assertEquals(RoomState.FREE, hotel.getRooms().get(0).getState(),
+                                "Room should be back to FREE state after checkout");
+        }
 
-    @Test
-    void testCheckOutGuest_ValidRoom_Success() {
-        // Arrange
-        ReserverPayer payer = chain.createReserverPayer(new Identity("id", "1"),
-                new CreditCard("1234567890123", "12/25", "123"));
-        RoomType type = hotel.getRooms().get(0).getRoomType();
-        chain.makeReservation("Hotel 1", LocalDate.now(), LocalDate.now().plusDays(1), type, payer);
-        Guest guest = new Guest("John Doe", new Address("St", "City", "Zip"), new Identity("P", "1"));
-        chain.checkInGuest("Hotel 1", 101, guest);
+        @Test
+        void testCreateReserverPayer_ValidInputs_Success() {
+                // Arrange
+                Identity identity = new Identity("Passport", "ABC123");
+                CreditCard creditCard = new CreditCard("123456789013", "12/25", "123");
 
-        // Act
-        chain.checkOutGuest("Hotel 1", 101);
+                // Act
+                ReserverPayer payer = chain.createReserverPayer(identity, creditCard);
 
-        // Assert
-        assertEquals(RoomState.FREE, hotel.getRooms().get(0).getState(),
-                "Room should be in FREE state after checkout");
-    }
-
-    @Test
-    void testCreateReserverPayer_ValidInputs_Success() {
-        // Arrange
-        Identity identity = new Identity("Passport", "ABC123");
-        CreditCard creditCard = new CreditCard("1234567890123456", "12/25", "123");
-
-        // Act
-        ReserverPayer payer = chain.createReserverPayer(identity, creditCard);
-
-        // Assert
-        assertNotNull(payer, "ReserverPayer should be created");
-        assertEquals(identity, payer.getId(), "Identity should match");
-        assertEquals(creditCard, payer.getCreditCardDetails(), "CreditCard should match");
-    }
+                // Assert
+                assertNotNull(payer, "ReserverPayer should be created successfully");
+                assertEquals(identity, payer.getId(), "Customer identity should match");
+                assertEquals(creditCard, payer.getCreditCardDetails(), "Payment details should match");
+        }
 }

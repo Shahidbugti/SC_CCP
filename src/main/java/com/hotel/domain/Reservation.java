@@ -1,8 +1,12 @@
 package com.hotel.domain;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 
+/**
+ * Represents a hotel room reservation with dates and payment information.
+ */
 public class Reservation {
     private final int reservationNumber;
     private final LocalDate startDate;
@@ -10,24 +14,62 @@ public class Reservation {
     private final ReserverPayer payer;
     private final Room room;
 
-    public Reservation(int reservationNumber, LocalDate startDate, LocalDate endDate, ReserverPayer payer, Room room) {
-        if (startDate == null || endDate == null) {
-            throw new IllegalArgumentException("Dates cannot be null");
-        }
-        if (endDate.isBefore(startDate)) {
-            throw new IllegalArgumentException("End date must be after start date");
-        }
-        if (payer == null) {
-            throw new IllegalArgumentException("Payer cannot be null");
-        }
-        if (room == null) {
-            throw new IllegalArgumentException("Room cannot be null");
-        }
+    public Reservation(int reservationNumber, LocalDate startDate, LocalDate endDate,
+            ReserverPayer payer, Room room) {
+        validateDates(startDate, endDate);
+        validatePayer(payer);
+        validateRoom(room);
+
         this.reservationNumber = reservationNumber;
         this.startDate = startDate;
         this.endDate = endDate;
         this.payer = payer;
         this.room = room;
+    }
+
+    /**
+     * Validates that dates are not null and end date is after start date.
+     */
+    private void validateDates(LocalDate start, LocalDate end) {
+        if (start == null || end == null) {
+            throw new IllegalArgumentException("Reservation dates cannot be null");
+        }
+        if (end.isBefore(start)) {
+            throw new IllegalArgumentException("End date must be after or equal to start date");
+        }
+    }
+
+    /**
+     * Validates that payer information is provided.
+     */
+    private void validatePayer(ReserverPayer payerInfo) {
+        if (payerInfo == null) {
+            throw new IllegalArgumentException("Payer information is required");
+        }
+    }
+
+    /**
+     * Validates that room is assigned.
+     */
+    private void validateRoom(Room assignedRoom) {
+        if (assignedRoom == null) {
+            throw new IllegalArgumentException("Room must be assigned to reservation");
+        }
+    }
+
+    /**
+     * Calculates the number of nights for this reservation.
+     */
+    public long getDurationInNights() {
+        return ChronoUnit.DAYS.between(startDate, endDate);
+    }
+
+    /**
+     * Checks if this reservation is currently active (today is between start and
+     * end dates).
+     */
+    public boolean isActiveOn(LocalDate date) {
+        return !date.isBefore(startDate) && !date.isAfter(endDate);
     }
 
     public int getReservationNumber() {
@@ -51,15 +93,15 @@ public class Reservation {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-			return true;
-		}
-        if (o == null || getClass() != o.getClass()) {
-			return false;
-		}
-        Reservation that = (Reservation) o;
-        return reservationNumber == that.reservationNumber;
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        Reservation otherReservation = (Reservation) other;
+        return reservationNumber == otherReservation.reservationNumber;
     }
 
     @Override

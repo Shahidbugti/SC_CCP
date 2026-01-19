@@ -14,24 +14,34 @@ import com.hotel.domain.Room;
 import com.hotel.domain.RoomType;
 import com.hotel.exception.HotelException;
 
+/**
+ * Manages a collection of hotels and customer payment profiles.
+ */
 public class HotelChain {
     private final String name;
     private final List<Hotel> hotels;
-    private final List<ReserverPayer> payers;
+    private final List<ReserverPayer> customers;
 
     public HotelChain(String name) {
-        if (name == null || name.isBlank()) {
-			throw new IllegalArgumentException("Chain name cannot be empty");
-		}
+        validateChainName(name);
         this.name = name;
         this.hotels = new ArrayList<>();
-        this.payers = new ArrayList<>();
+        this.customers = new ArrayList<>();
     }
 
+    private void validateChainName(String chainName) {
+        if (chainName == null || chainName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Hotel chain name is required");
+        }
+    }
+
+    /**
+     * Adds a new hotel to the chain's portfolio.
+     */
     public void addHotel(Hotel hotel) {
         if (hotel == null) {
-			throw new IllegalArgumentException("Hotel cannot be null");
-		}
+            throw new IllegalArgumentException("Cannot add a null hotel to the chain");
+        }
         hotels.add(hotel);
     }
 
@@ -39,50 +49,78 @@ public class HotelChain {
         return Collections.unmodifiableList(hotels);
     }
 
-    public ReserverPayer createReserverPayer(Identity id, CreditCard cc) {
-        ReserverPayer payer = new ReserverPayer(id, cc);
-        payers.add(payer);
-        return payer;
+    /**
+     * Registers a new customer (ReserverPayer) in the system.
+     */
+    public ReserverPayer createReserverPayer(Identity id, CreditCard creditCard) {
+        ReserverPayer newCustomer = new ReserverPayer(id, creditCard);
+        customers.add(newCustomer);
+        return newCustomer;
     }
 
-    public Reservation makeReservation(String hotelName, LocalDate start, LocalDate end, RoomType roomType, ReserverPayer payer) {
-        Hotel hotel = findHotel(hotelName);
-        if (hotel.available(start, end, roomType)) {
-            return hotel.createReservation(start, end, roomType, payer);
-        } else {
-            throw new HotelException("Room not available in " + hotelName);
+    /**
+     * Attempts to book a room in a specific hotel.
+     */
+    public Reservation makeReservation(String hotelName, LocalDate start, LocalDate end,
+            RoomType roomType, ReserverPayer customer) {
+        Hotel targetHotel = findHotelByName(hotelName);
+
+        // Double check availability before creating reservation
+        if (!targetHotel.available(start, end, roomType)) {
+            throw new HotelException("Sorry, no " + roomType.getKind() + " rooms available in " + hotelName);
         }
+
+        return targetHotel.createReservation(start, end, roomType, customer);
     }
 
-    public void cancelReservation(String hotelName, int reservationNumber) {
-        Hotel hotel = findHotel(hotelName);
-        hotel.cancelReservation(reservationNumber);
+    /**
+     * Cancels an existing reservation in the specified hotel.
+     */
+    public void cancelReservation(String hotelName, int reservationId) {
+        findHotelByName(hotelName).cancelReservation(reservationId);
     }
 
+    /**
+     * Performs guest check-in at a specific hotel and room.
+     */
     public void checkInGuest(String hotelName, int roomNumber, Guest guest) {
-        Hotel hotel = findHotel(hotelName);
-        Room room = hotel.getRooms().stream()
-                .filter(r -> r.getNumber() == roomNumber)
-                .findFirst()
-                .orElseThrow(() -> new HotelException("Room " + roomNumber + " not found in " + hotelName));
+        Hotel hotel = findHotelByName(hotelName);
+        Room room = findRoomInHotel(hotel, roomNumber);
 
         room.checkInGuest(guest);
     }
 
+    /**
+     * Performs guest check-out at a specific hotel and room.
+     */
     public void checkOutGuest(String hotelName, int roomNumber) {
-        Hotel hotel = findHotel(hotelName);
-        Room room = hotel.getRooms().stream()
-                .filter(r -> r.getNumber() == roomNumber)
-                .findFirst()
-                .orElseThrow(() -> new HotelException("Room " + roomNumber + " not found in " + hotelName));
+        Hotel hotel = findHotelByName(hotelName);
+        Room room = findRoomInHotel(hotel, roomNumber);
 
         room.checkOutGuest();
     }
 
-    private Hotel findHotel(String name) {
+    /**
+     * Helper to find a hotel by its name (case-insensitive).
+     */
+    private Hotel findHotelByName(String name) {
         return hotels.stream()
                 .filter(h -> h.getName().equalsIgnoreCase(name))
                 .findFirst()
-                .orElseThrow(() -> new HotelException("Hotel not found: " + name));
+                .orElseThrow(() -> new HotelException("Hotel '" + name + "' does not belong to this chain"));
+    }
+
+    /**
+     * Helper to find a specific room within a hotel.
+     */
+    private Room findRoomInHotel(Hotel hotel, int number) {
+        return hotel.getRooms().stream()
+                .filter(r -> r.getNumber() == number)
+                .findFirst()
+                .orElseThrow(() -> new HotelException("Room " + number + " not found in " + hotel.getName()));
+    }
+
+    public String getName() {
+        return name;
     }
 }

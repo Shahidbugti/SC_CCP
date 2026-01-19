@@ -2,20 +2,53 @@ package com.hotel.domain;
 
 import java.util.Objects;
 
+/**
+ * Represents a person's identification document.
+ * Examples: Passport, Driver's License, National ID
+ */
 public class Identity {
     private final String idNumber;
     private final String type; // e.g., Passport, Driving License
 
     public Identity(String type, String idNumber) {
-        if (type == null || type.isBlank()) {
-            throw new IllegalArgumentException("Identity type cannot be empty");
-        }
-        if (idNumber == null || idNumber.isBlank()) {
-            throw new IllegalArgumentException("ID number cannot be empty");
-        }
+        validateType(type);
+        validateIdNumber(idNumber);
 
         this.type = type;
         this.idNumber = idNumber;
+    }
+
+    /**
+     * Validates that identity type is provided and not empty.
+     */
+    private void validateType(String idType) {
+        if (idType == null || isEmpty(idType)) {
+            throw new IllegalArgumentException("Identity type is required");
+        }
+    }
+
+    /**
+     * Validates that ID number is provided and not empty.
+     */
+    private void validateIdNumber(String number) {
+        if (number == null || isEmpty(number)) {
+            throw new IllegalArgumentException("ID number is required");
+        }
+    }
+
+    /**
+     * Checks if a string is empty or contains only whitespace.
+     */
+    private boolean isEmpty(String text) {
+        return text.trim().isEmpty();
+    }
+
+    /**
+     * Checks if this identity has valid information.
+     */
+    public boolean isValid() {
+        return type != null && !isEmpty(type) &&
+                idNumber != null && !isEmpty(idNumber);
     }
 
     public String getType() {
@@ -27,16 +60,16 @@ public class Identity {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
+    public boolean equals(Object other) {
+        if (this == other) {
             return true;
         }
-        if (o == null || getClass() != o.getClass()) {
+        if (other == null || getClass() != other.getClass()) {
             return false;
         }
-        Identity identity = (Identity) o;
-        return Objects.equals(idNumber, identity.idNumber) &&
-                Objects.equals(type, identity.type);
+        Identity otherIdentity = (Identity) other;
+        return Objects.equals(idNumber, otherIdentity.idNumber) &&
+                Objects.equals(type, otherIdentity.type);
     }
 
     @Override

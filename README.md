@@ -1,39 +1,41 @@
-# Hotel Reservation System - CCP Project
+# Hotel Reservation System
 
-## Project Overview
-This is a **Java-based Hotel Reservation System** implementing a UML class design.  
-It manages hotels, rooms, guests, and reservations, demonstrating:
-- Making and canceling reservations  
-- Checking room availability  
-- Guest check-in and check-out  
-- Defensive programming and clean code principles  
+This project is a Java-based Hotel Reservation System designed to manage rooms, guests, and reservations within a hotel chain. It emphasizes clean code, defensive programming, and unit testing.
 
----
+## 🚀 How to Run the System
 
-## How to Build & Run
+To quickly compile and run the system, follow these steps:
 
-1. **Compile all classes**:
-
+### 1. Compile Everything
+Ensure you have the JUnit 5 standalone JAR in the `lib` directory. Then, compile all source files:
 ```powershell
-javac -cp "bin;lib/junit-platform-console-standalone-1.10.0.jar" -d bin src/main/java/**/*.java src/test/java/**/*.java
-Run the main program:
+javac -cp "lib/junit-platform-console-standalone-1.10.0.jar" -d bin src/main/java/com/hotel/**/*.java src/main/java/com/hotel/core/*.java src/main/java/com/hotel/domain/*.java src/main/java/com/hotel/exception/*.java
+```
+*(Note: If the `**/*.java` wildcard doesn't work in your shell, you can list the directories or use a build tool like Maven/Gradle).*
 
+### 2. Run the Demonstration
+```powershell
 java -cp bin com.hotel.Main
+```
 
+### 3. Run the Test Suite (JUnit 5)
+```powershell
+java -jar "lib/junit-platform-console-standalone-1.10.0.jar" --class-path bin --scan-class-path
+```
 
-Run all tests:
+## 🌟 Key Features
 
-java -jar lib/junit-platform-console-standalone-1.10.0.jar -cp bin --scan-classpath
+1.  **Comprehensive Room Management**: Manage room inventory with different types (Single, Double, Family, Suite) and track real-time states.
+2.  **Robust Reservation System**: Support for creating, checking availability, and canceling bookings with complex date logic.
+3.  **Guest Life Cycle**: Full support for guest registration, identity verification, and check-in/check-out processes.
+4.  **Defensive Programming**: Extensive input validation and state-transition logic to prevent system inconsistencies.
+5.  **Unit Testing**: A complete suite of 160+ unit tests covering all domain and core logic using JUnit 5.
 
+## 📁 Project Structure
 
-All tests should pass successfully.
-
-Features
-
-Implements UML design exactly
-
-Defensive programming with input validation
-
-Clean, modular, maintainable code
-
-JUnit tests cover normal, boundary, and invalid cases
+- `src/main/java/com/hotel/domain`: Core business entities (Room, Guest, Reservation, etc.)
+- `src/main/java/com/hotel/core`: Orchestration logic (Hotel, HotelChain)
+- `src/main/java/com/hotel/exception`: Custom business exceptions
+- `src/test/java`: Comprehensive JUnit test suite
+- `lib`: External libraries (JUnit 5 console standalone JAR)
+- `bin`: Compiled class files
