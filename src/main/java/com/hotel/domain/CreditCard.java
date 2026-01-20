@@ -28,7 +28,7 @@ public class CreditCard {
      */
     private void validateCardNumber(String cardNumber) {
         if (cardNumber == null || !isValidCardNumber(cardNumber)) {
-            throw new IllegalArgumentException("Card number must be at least 12 digits");
+            throw new IllegalArgumentException("Card number must be at least 13 digits");
         }
     }
 
@@ -36,7 +36,7 @@ public class CreditCard {
      * Checks if card number meets minimum length requirement.
      */
     private boolean isValidCardNumber(String cardNumber) {
-        return cardNumber.length() >= 12;
+        return cardNumber.length() >= 13;
     }
 
     /**

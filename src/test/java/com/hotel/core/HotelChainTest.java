@@ -140,7 +140,7 @@ class HotelChainTest {
         void testCreateReserverPayer_ValidInputs_Success() {
                 // Arrange
                 Identity identity = new Identity("Passport", "ABC123");
-                CreditCard creditCard = new CreditCard("123456789013", "12/25", "123");
+                CreditCard creditCard = new CreditCard("1234567890123", "12/25", "123");
 
                 // Act
                 ReserverPayer payer = chain.createReserverPayer(identity, creditCard);
